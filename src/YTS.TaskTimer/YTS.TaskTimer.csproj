@@ -10,5 +10,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\app.ico" />
     </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YTS.TaskTimer.Logic\YTS.TaskTimer.Logic.csproj" />
+  </ItemGroup>
 
 </Project>
