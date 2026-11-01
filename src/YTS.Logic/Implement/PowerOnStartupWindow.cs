@@ -9,9 +9,11 @@ namespace YTS.Logic.Implement
     {
         private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private readonly string AppRegistryName;
-        public PowerOnStartupWindow(string AppRegistryName)
+        private readonly ILog log;
+        public PowerOnStartupWindow(string AppRegistryName, ILog log)
         {
             this.AppRegistryName = $"{AppRegistryName}_AutoStart";
+            this.log = log;
         }
 
         // 统一入口：优先 Environment.ProcessPath，兜底老 API
@@ -50,6 +52,7 @@ namespace YTS.Logic.Implement
                 using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true)
                              ?? Registry.CurrentUser.CreateSubKey(RunKeyPath);
                 key!.SetValue(AppRegistryName, $"\"{GetExecutablePath()}\"");
+                log.Info("启用自启动成功");
                 return true;
             }
             catch (Exception ex)
@@ -64,6 +67,7 @@ namespace YTS.Logic.Implement
             {
                 using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
                 key?.DeleteValue(AppRegistryName, false);
+                log.Info("禁用自启动成功");
                 return true;
             }
             catch (Exception ex)

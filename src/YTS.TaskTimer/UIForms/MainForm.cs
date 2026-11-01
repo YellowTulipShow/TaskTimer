@@ -1,5 +1,4 @@
-﻿using YTS.Logic.Func;
-using YTS.Logic.Func.Implement;
+﻿using YTS.Logic;
 using YTS.TaskTimer.UITools;
 
 namespace YTS.TaskTimer.UIForms
@@ -9,17 +8,15 @@ namespace YTS.TaskTimer.UIForms
         private readonly NotifyIcon _tray;
         private readonly Icon _trayIcon;
 
+        private readonly ILog log;
         private readonly IPowerOnStartup powerOnStartup;
-        public MainForm(IPowerOnStartup powerOnStartup)
+        public MainForm(ILog log, IPowerOnStartup powerOnStartup)
         {
+            this.log = log;
             this.powerOnStartup = powerOnStartup;
 
             Form self = this;
-            // 窗体基本属性（等价于设计器里做的事）
-            self.Text = "任务计划程序";
-            self.StartPosition = FormStartPosition.CenterScreen;
-            self.Size = new Size(900, 600);
-            self.MinimumSize = new Size(600, 400);
+            FormStyleConfig(self);
 
             // 设置窗口图标
             self.Icon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
@@ -33,6 +30,16 @@ namespace YTS.TaskTimer.UIForms
             _trayIcon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
             _tray = UICreateNotifyIcon(_trayIcon);
         }
+        private void FormStyleConfig(Form self)
+        {
+            // 窗体基本属性（等价于设计器里做的事）
+            self.Text = "任务计划程序";
+            self.StartPosition = FormStartPosition.CenterScreen;
+            self.Size = new Size(900, 600);
+            self.MinimumSize = new Size(600, 400);
+        }
+
+
         private ToolStripMenuItem UICreateToolStripMenuItem_System()
         {
             ToolStripMenuItem m = new("系统");
@@ -56,17 +63,23 @@ namespace YTS.TaskTimer.UIForms
                 // 处理点击事件
                 autoStartMenuItem.Click += (_, _) =>
                 {
-                    // 用户勾选，尝试启用
-                    // 如果启用失败，回滚勾选状态
-                    if (autoStartMenuItem.Checked && !powerOnStartup.Enable())
+                    if (autoStartMenuItem.Checked)
                     {
-                        autoStartMenuItem.Checked = false;
+                        // 用户勾选，尝试启用
+                        if (!powerOnStartup.Enable())
+                        {
+                            // 如果启用失败，回滚勾选状态
+                            autoStartMenuItem.Checked = false;
+                        }
                     }
-                    // 用户取消勾选，尝试禁用
-                    // 如果禁用失败，回滚勾选状态
-                    else if (!powerOnStartup.Disable())
+                    else
                     {
-                        autoStartMenuItem.Checked = true;
+                        // 用户取消勾选，尝试禁用
+                        if (!powerOnStartup.Disable())
+                        {
+                            // 如果禁用失败，回滚勾选状态
+                            autoStartMenuItem.Checked = true;
+                        }
                     }
                 };
 

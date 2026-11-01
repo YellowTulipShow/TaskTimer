@@ -7,6 +7,19 @@
     {
         public static void RegisterExecute(IDIFactoryManage ci)
         {
+            // 通用日志
+            ci.Register(EDIFactoryRegisterType.Singleton, () =>
+            {
+                FileInfo fileInfo;
+                IPrint print;
+                ILog log;
+
+                fileInfo = ILogExtend.GetLogFilePath(string.Empty);
+                print = new PrintFile(fileInfo, System.Text.Encoding.UTF8);
+                log = new LogBasicJSON(print);
+
+                return log;
+            });
         }
 
         /// <summary>

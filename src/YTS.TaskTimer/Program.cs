@@ -52,7 +52,8 @@ static class Program
         // 与自启动相关的服务
         services.AddSingleton<IPowerOnStartup>((sp) =>
         {
-            return new Logic.Implement.PowerOnStartupWindow(ReSourceConst.PowerOnStartupSignName);
+            ILog log = sp.GetRequiredService<ILog>();
+            return new Logic.Implement.PowerOnStartupWindow(ReSourceConst.PowerOnStartupSignName, log);
         });
 
         // 其他依赖项...

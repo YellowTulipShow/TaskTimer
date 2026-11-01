@@ -80,9 +80,12 @@ namespace YTS.Logic.Implement
         /// <returns>文件信息</returns>
         public static FileInfo GetLogFilePath(string region)
         {
-            string path = Path.Combine(
-                GetApplicationDirectoryAddress(),
-                $"logs/{region}/{DateTime.Now:yyyy_MM_dd}.log");
+            string name;
+            if (!string.IsNullOrEmpty(region))
+                name = $"logs/{region}/{DateTime.Now:yyyy_MM_dd}.log";
+            else
+                name = $"logs/{DateTime.Now:yyyy_MM_dd}.log";
+            string path = Path.Combine(GetApplicationDirectoryAddress(), name);
             return new FileInfo(path);
         }
     }
