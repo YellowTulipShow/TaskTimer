@@ -1,5 +1,5 @@
 
-namespace YTS.Logic.Func
+namespace YTS.Logic
 {
     /// <summary>
     /// 接口: 开机自启动管理工具

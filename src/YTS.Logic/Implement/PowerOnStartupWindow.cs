@@ -2,7 +2,7 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 
-namespace YTS.Logic.Func.Implement
+namespace YTS.Logic.Implement
 {
     [SupportedOSPlatform("windows")]
     public class PowerOnStartupWindow : IPowerOnStartup

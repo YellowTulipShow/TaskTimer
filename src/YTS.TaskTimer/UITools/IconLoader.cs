@@ -2,7 +2,7 @@ using System.Drawing;
 using System.Reflection;
 using System.IO;
 
-namespace yts.TaskTimer.UITools
+namespace YTS.TaskTimer.UITools
 {
     public static class IconLoader
     {

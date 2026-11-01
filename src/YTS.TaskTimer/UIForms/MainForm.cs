@@ -1,7 +1,6 @@
-﻿using yts.TaskTimer.UITools;
-
-using YTS.Logic.Func;
+﻿using YTS.Logic.Func;
 using YTS.Logic.Func.Implement;
+using YTS.TaskTimer.UITools;
 
 namespace YTS.TaskTimer.UIForms
 {
@@ -9,8 +8,12 @@ namespace YTS.TaskTimer.UIForms
     {
         private readonly NotifyIcon _tray;
         private readonly Icon _trayIcon;
-        public MainForm()
+
+        private readonly IPowerOnStartup powerOnStartup;
+        public MainForm(IPowerOnStartup powerOnStartup)
         {
+            this.powerOnStartup = powerOnStartup;
+
             Form self = this;
             // 窗体基本属性（等价于设计器里做的事）
             self.Text = "任务计划程序";
@@ -18,9 +21,8 @@ namespace YTS.TaskTimer.UIForms
             self.Size = new Size(900, 600);
             self.MinimumSize = new Size(600, 400);
 
-            string source_name = "YTS.TaskTimer.Assets.app.ico";
             // 设置窗口图标
-            self.Icon = IconLoader.FromEmbedded(source_name);
+            self.Icon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
 
             // 创建菜单栏工具
             MenuStrip menu = UICreateMenuStrip();
@@ -28,7 +30,7 @@ namespace YTS.TaskTimer.UIForms
             self.MainMenuStrip = menu;
 
             // 创建通知小图标
-            _trayIcon = IconLoader.FromEmbedded(source_name);
+            _trayIcon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
             _tray = UICreateNotifyIcon(_trayIcon);
         }
         private ToolStripMenuItem UICreateToolStripMenuItem_System()
@@ -43,7 +45,6 @@ namespace YTS.TaskTimer.UIForms
 
             // 开机自启动
             {
-                IPowerOnStartup powerOnStartup = new PowerOnStartupWindow("MyTaskScheduler");
                 // 创建一个可勾选的菜单项
                 ToolStripMenuItem autoStartMenuItem = new("开机自启动")
                 {
