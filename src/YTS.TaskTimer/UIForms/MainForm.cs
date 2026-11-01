@@ -1,6 +1,7 @@
 ﻿using yts.TaskTimer.UITools;
-using YTS.TaskTimer.Logic.Func;
-using YTS.TaskTimer.Logic.Func.Implement;
+
+using YTS.Logic.Func;
+using YTS.Logic.Func.Implement;
 
 namespace YTS.TaskTimer.UIForms
 {

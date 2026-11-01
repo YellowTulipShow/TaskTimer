@@ -1,4 +1,4 @@
-﻿namespace YTS.TaskTimer.Logic.Test;
+﻿namespace YTS.Logic.Test;
 
 [TestClass]
 public sealed class Test1

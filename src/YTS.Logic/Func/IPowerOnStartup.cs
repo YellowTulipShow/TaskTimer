@@ -1,5 +1,5 @@
 
-namespace YTS.TaskTimer.Logic.Func
+namespace YTS.Logic.Func
 {
     /// <summary>
     /// 接口: 开机自启动管理工具

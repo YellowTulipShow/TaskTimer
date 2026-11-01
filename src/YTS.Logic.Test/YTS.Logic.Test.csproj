@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\YTS.TaskTimer.Logic\YTS.TaskTimer.Logic.csproj" />
+    <ProjectReference Include="..\YTS.Logic\YTS.Logic.csproj" />
   </ItemGroup>
 
 </Project>
