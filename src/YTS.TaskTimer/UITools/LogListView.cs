@@ -4,6 +4,9 @@ using System.Text;
 
 namespace YTS.TaskTimer.UITools
 {
+    /// <summary>
+    /// 接口: UI日志展示
+    /// </summary>
     public interface IUILogView : IDisposable
     {
         /// <summary>
@@ -17,6 +20,9 @@ namespace YTS.TaskTimer.UITools
         /// <param name="type">类型 (高亮展示)</param>
         void WriteLog(string message, EUILogViewType type = EUILogViewType.INFO);
     }
+    /// <summary>
+    /// 枚举: UI日志类型
+    /// </summary>
     public enum EUILogViewType
     {
         INFO = 1,

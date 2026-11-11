@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.VisualBasic.Logging;
 using YTS.Logic;
+using YTS.Logic.Implement;
 using YTS.TaskTimer.UIForms;
 using YTS.TaskTimer.UITools;
 
@@ -48,6 +49,8 @@ static class Program
         // --- 窗体注册 ---
         // 主窗体通常注册为 Transient，因为桌面应用一般只有一个主窗体实例
         services.AddTransient<MainForm>();
+
+        services.AddSingleton<ISchedulerEngine, SchedulerEngine>();
 
         // 与自启动相关的服务
         services.AddSingleton<IPowerOnStartup>((sp) =>
