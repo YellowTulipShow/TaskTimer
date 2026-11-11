@@ -3,10 +3,13 @@ using YTS.Logic.Models;
 
 namespace YTS.Logic.Implement
 {
-    public interface ISchedulerEngine : IDisposable
+    public interface ISchedulerEngineCallback
     {
-        event Action<ScheduleConfig, string>? TaskStateChanged;
-
+        void OnLog(string text);
+        void OnTaskStateChanged(ScheduleConfig schedule, string text);
+    }
+    public interface ISchedulerEngine : IDisposable, ICallbackLibraryUseConfig<ISchedulerEngineCallback>
+    {
         void LoadConfig(AppConfig config);
 
         void Start();
@@ -19,15 +22,20 @@ namespace YTS.Logic.Implement
 
     public sealed class SchedulerEngine : ISchedulerEngine
     {
-        private AppConfig _config;
+        private AppConfig? _config;
         private readonly System.Timers.Timer _timer;
         private readonly object _gate = new();
-        private readonly Dictionary<Guid, Process> _running = new();
+        private readonly Dictionary<Guid, Process> _running = [];
+        private readonly ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary;
 
-        public event Action<ScheduleConfig, string>? TaskStateChanged;
-
-        public SchedulerEngine()
+        public IDisposable RegisterCallback(ISchedulerEngineCallback callback)
         {
+            return callbackLibrary.RegisterCallback(callback);
+        }
+
+        public SchedulerEngine(ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary)
+        {
+            this.callbackLibrary = callbackLibrary;
             _timer = new System.Timers.Timer(30_000) { AutoReset = true };
             _timer.Elapsed += (_, _) => Tick();
         }
@@ -35,6 +43,22 @@ namespace YTS.Logic.Implement
         public void LoadConfig(AppConfig config)
         {
             _config = config;
+        }
+        private void Log(string text)
+        {
+            var calls = callbackLibrary.GetSubscribedCallbacks();
+            for (int i = 0; calls != null && i < calls.Length; i++)
+            {
+                calls[i].OnLog(text);
+            }
+        }
+        private void TaskStateChanged(ScheduleConfig schedule, string text)
+        {
+            var calls = callbackLibrary.GetSubscribedCallbacks();
+            for (int i = 0; calls != null && i < calls.Length; i++)
+            {
+                calls[i].OnTaskStateChanged(schedule, text);
+            }
         }
 
         public void Start()
@@ -47,6 +71,11 @@ namespace YTS.Logic.Implement
 
         private void RecalculateAll()
         {
+            if (_config == null)
+            {
+                Log("配合项为空, 无法重新计算全部");
+                return;
+            }
             var now = DateTimeOffset.UtcNow;
             foreach (var s in _config.Schedules)
                 s.NextRunAt = s.ComputeNext(now);
@@ -54,18 +83,34 @@ namespace YTS.Logic.Implement
 
         private void Tick()
         {
+            if (_config == null)
+            {
+                Log("配合项为空, 无法执行循环任务");
+                return;
+            }
             if (!Monitor.TryEnter(_gate)) return;
             try
             {
                 var now = DateTimeOffset.UtcNow;
+                Log($"定时器检测时间点: {now.ToString("yyyy-hh-dd HH:mm:ss")}");
                 foreach (var s in _config.Schedules.ToArray())
                 {
+                    Log($"遍历任务[{s.Name}]");
                     if (!s.Enabled) continue;
-                    if (s.NextRunAt is null) { s.NextRunAt = s.ComputeNext(now); continue; }
+                    if (s.NextRunAt is null)
+                    {
+                        s.NextRunAt = s.ComputeNext(now);
+                        continue;
+                    }
                     if (s.NextRunAt <= now)
                     {
+                        Log($"符合时间点准备执行");
                         Launch(s);
                         s.NextRunAt = s.ComputeNext(now);
+                    }
+                    else
+                    {
+                        Log($"不在时间点: {s.NextRunAt?.ToString("yyyy-hh-dd HH:mm:ss")}");
                     }
                 }
             }
@@ -93,7 +138,7 @@ namespace YTS.Logic.Implement
                     UseShellExecute = true
                 };
                 var p = Process.Start(psi);
-                if (p is null) { TaskStateChanged?.Invoke(s, "启动失败"); return; }
+                if (p is null) { TaskStateChanged(s, "启动失败"); return; }
 
                 s.RunningProcessId = p.Id;
                 lock (_running) { _running[s.Id] = p; }
@@ -105,15 +150,15 @@ namespace YTS.Logic.Implement
                     s.RunningProcessId = null;
                     int code = -1;
                     try { code = p.ExitCode; } catch { }
-                    TaskStateChanged?.Invoke(s, $"已结束（ExitCode={code}）");
+                    TaskStateChanged(s, $"已结束（ExitCode={code}）");
                     p.Dispose();
                 };
 
-                TaskStateChanged?.Invoke(s, $"已启动，PID={p.Id}");
+                TaskStateChanged(s, $"已启动，PID={p.Id}");
             }
             catch (Exception ex)
             {
-                TaskStateChanged?.Invoke(s, $"启动异常：{ex.Message}");
+                TaskStateChanged(s, $"启动异常：{ex.Message}");
             }
         }
 
@@ -133,6 +178,11 @@ namespace YTS.Logic.Implement
 
         public void RefreshSchedule(Guid id)
         {
+            if (_config == null)
+            {
+                Log($"配合项为空, 无法执行指定任务: {id}");
+                return;
+            }
             var s = _config.Schedules.FirstOrDefault(x => x.Id == id);
             if (s is not null) s.NextRunAt = s.ComputeNext(DateTimeOffset.UtcNow);
         }

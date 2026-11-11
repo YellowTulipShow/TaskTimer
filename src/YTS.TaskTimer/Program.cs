@@ -15,6 +15,9 @@ static class Program
     {
         // 1. 初始化 WinForms 默认配置（视觉样式、DPI 等）
         ApplicationConfiguration.Initialize();
+        Application.ThreadException += (_, e) =>
+            MessageBox.Show(e.Exception.ToString(), "未处理异常",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
 
         // 2. 构建主机，这是 DI 的基石
         HostApplicationBuilder? builder;
@@ -26,12 +29,16 @@ static class Program
         service.AddSingleton<IDIFactoryRead>((_) => diManage);
         // 3. 注册你的服务（详见下文）
         ConfigureServices(service);
-        Logic.Implement.DependencyInjectionImplementationCaseInstallExtend.RegisterExecute(diManage);
+        DependencyInjectionImplementationCaseInstallExtend.RegisterExecute(diManage);
 
         // 4. 构建主机
         using IHost host = builder.Build();
         IServiceProvider provider = host.Services;
         diManage.SetIServiceProvider(provider);
+
+        using ISchedulerEngine engine = provider.GetRequiredService<ISchedulerEngine>();
+        engine.Start();
+
         // 5. 从 DI 容器中解析出主窗体
         //    注意：MainForm 本身也必须被注册（通常是 AddTransient）
         Form mainForm = provider.GetRequiredService<MainForm>();
@@ -56,8 +63,12 @@ static class Program
         services.AddSingleton<IPowerOnStartup>((sp) =>
         {
             ILog log = sp.GetRequiredService<ILog>();
-            return new Logic.Implement.PowerOnStartupWindow(ReSourceConst.PowerOnStartupSignName, log);
+            return new PowerOnStartupWindow(ReSourceConst.PowerOnStartupSignName, log);
         });
+
+        // 注册: 回调管理工具注册
+        services.AddTransient(typeof(ICallbackLibraryManage<>), typeof(CallbackLibraryManage<>));
+
 
         // 其他依赖项...
     }

@@ -5,7 +5,7 @@ using YTS.TaskTimer.UITools;
 
 namespace YTS.TaskTimer.UIForms
 {
-    public sealed class MainForm : Form
+    public sealed class MainForm : Form, ISchedulerEngineCallback
     {
         private readonly AppConfig _config;
         private readonly ISchedulerEngine _engine;
@@ -16,13 +16,14 @@ namespace YTS.TaskTimer.UIForms
         private readonly ListView logList;
         private readonly SplitContainer _split;
         private readonly ToolStripStatusLabel _statusLabel;
+    private readonly ContextMenuStrip _trayMenu;
 
         private readonly ILog log;
         private readonly IUILogView uILogView;
         private readonly IPowerOnStartup powerOnStartup;
 
-
         private bool _reallyExit;
+        private IDisposable dis_SchedulerEngine_call;
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -32,8 +33,26 @@ namespace YTS.TaskTimer.UIForms
                 _trayIcon.Dispose();
 
                 uILogView.Dispose();
+                dis_SchedulerEngine_call.Dispose();
+                _engine.Dispose();
             }
             base.Dispose(disposing);
+        }
+        private void ExitApplication()
+        {
+            if (MessageBox.Show(this, "确定退出程序？所有正在运行的子进程会被终止。", "确认退出",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+
+            _reallyExit = true;
+            uILogView.Dispose();
+            _tray.Visible = false;
+            _tray.Dispose();
+            dis_SchedulerEngine_call.Dispose();
+            _engine.Dispose();
+
+            Close();
+            Application.ExitThread();
         }
 
         public MainForm(ILog log, IPowerOnStartup powerOnStartup, ISchedulerEngine engine)
@@ -44,6 +63,7 @@ namespace YTS.TaskTimer.UIForms
             _config = ConfigManageExtend.ReadConfigFileContent();
             _engine = engine;
             _engine.LoadConfig(_config);
+            dis_SchedulerEngine_call = _engine.RegisterCallback(this);
 
             Form self = this;
             FormStyleConfig(self);
@@ -74,13 +94,14 @@ namespace YTS.TaskTimer.UIForms
             status.Items.Add(_statusLabel);
 
             // 创建菜单栏工具
-            MenuStrip menu = UICreateMenuStrip();
+            MenuStrip menu = BuildMenu();
             menu.Dock = DockStyle.Top;
             self.MainMenuStrip = menu;
 
             var toolbar = BuildToolbar();
 
             // 创建通知小图标
+
             _trayIcon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
             _tray = UICreateNotifyIcon(_trayIcon);
 
@@ -88,9 +109,6 @@ namespace YTS.TaskTimer.UIForms
             Controls.Add(toolbar);
             Controls.Add(menu);
             Controls.Add(status);
-
-            // 引擎事件
-            _engine.TaskStateChanged += OnEngineTaskStateChanged;
 
             FormClosing += OnFormClosing;
             Resize += (_, _) =>
@@ -328,15 +346,23 @@ namespace YTS.TaskTimer.UIForms
             _statusLabel.Text = $"共 {total} 个任务，启用 {enabled}，运行中 {running}";
         }
 
-        private ToolStripMenuItem UICreateToolStripMenuItem_System()
+        private MenuStrip BuildMenu()
         {
-            ToolStripMenuItem m = new("系统");
-            m.DropDownItems.Add(new ToolStripMenuItem("退出", null, (_, _) => Close()));
-            return m;
-        }
-        private ToolStripMenuItem UICreateToolStripMenuItem_Tools()
-        {
-            ToolStripMenuItem m = new("工具");
+            var menu = new MenuStrip();
+
+            var file = new ToolStripMenuItem("文件");
+            file.DropDownItems.Add(new ToolStripMenuItem("新建任务", null, (_, _) => OnNewTask())
+            { ShortcutKeys = Keys.Control | Keys.N });
+            file.DropDownItems.Add(new ToolStripMenuItem("保存配置", null, (_, _) =>
+            {
+                ConfigManageExtend.SaveConfigFileContent(_config);
+                SetStatus("配置已保存");
+            })
+            { ShortcutKeys = Keys.Control | Keys.S });
+            file.DropDownItems.Add(new ToolStripSeparator());
+            file.DropDownItems.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
+
+            var tools = new ToolStripMenuItem("工具");
 
             // 开机自启动
             {
@@ -371,20 +397,58 @@ namespace YTS.TaskTimer.UIForms
                     }
                 };
 
-                m.DropDownItems.Add(autoStartMenuItem);
+                tools.DropDownItems.Add(autoStartMenuItem);
             }
-            return m;
-        }
-        private MenuStrip UICreateMenuStrip()
-        {
-            // 手写控件装配
-            MenuStrip menu = new();
 
-            menu.Items.Add(UICreateToolStripMenuItem_System());
-            menu.Items.Add(UICreateToolStripMenuItem_Tools());
+            var closeToTray = new ToolStripMenuItem("关闭时最小化到托盘")
+            {
+                CheckOnClick = true,
+                Checked = _config.CloseToTray
+            };
+            closeToTray.Click += (_, _) =>
+            {
+                _config.CloseToTray = closeToTray.Checked;
+                ConfigManageExtend.SaveConfigFileContent(_config);
+            };
+            tools.DropDownItems.Add(closeToTray);
 
+            menu.Items.Add(file);
+            menu.Items.Add(tools);
             return menu;
         }
+
+        private void ShowMainWindow()
+        {
+            Show();
+            WindowState = FormWindowState.Normal;
+            ShowInTaskbar = true;
+            Activate();
+        }
+        private ContextMenuStrip BuildTrayMenu()
+        {
+            var ctx = new ContextMenuStrip();
+            ctx.Items.Add("打开主界面", null, (_, _) => ShowMainWindow());
+            ctx.Items.Add("退出", null, (_, _) => ExitApplication());
+            ctx.Opening += (_, _) =>
+            {
+                for (int i = ctx.Items.Count - 1; i >= 0; i--)
+                    if (ctx.Items[i].Tag is Guid) ctx.Items.RemoveAt(i);
+
+                var running = _config.Schedules.Where(s => s.RunningProcessId.HasValue).ToList();
+                if (running.Count == 0) return;
+
+                int insertAt = 1;
+                ctx.Items.Insert(insertAt++, new ToolStripSeparator());
+                foreach (var s in running)
+                {
+                    var item = new ToolStripMenuItem($"终止「{s.Name}」") { Tag = s.Id };
+                    item.Click += (_, _) => KillTask(s.Id);
+                    ctx.Items.Insert(insertAt++, item);
+                }
+            };
+            return ctx;
+        }
+
 
         private NotifyIcon UICreateNotifyIcon(Icon icon)
         {
@@ -395,35 +459,14 @@ namespace YTS.TaskTimer.UIForms
                 Visible = true
             };
 
-            ContextMenuStrip ctx = new();
-            ctx.Items.Add("显示主窗口", null, (_, _) => RestoreFromTray());
-            ctx.Items.Add("退出", null, (_, _) => { t.Visible = false; Close(); });
-            t.ContextMenuStrip = ctx;
-            t.DoubleClick += (_, _) => RestoreFromTray();
+            // ContextMenuStrip ctx = new();
+            // ctx.Items.Add("显示主窗口", null, (_, _) => ShowMainWindow());
+            // ctx.Items.Add("退出", null, (_, _) => { t.Visible = false; Close(); });
+            // t.ContextMenuStrip = ctx;
+            ContextMenuStrip _trayMenu = BuildTrayMenu();
+            t.ContextMenuStrip = _trayMenu;
+            t.DoubleClick += (_, _) => ShowMainWindow();
             return t;
-        }
-
-        private void RestoreFromTray()
-        {
-            Show();
-            WindowState = FormWindowState.Normal;
-            Activate();
-        }
-        private void ExitApplication()
-        {
-            if (MessageBox.Show(this, "确定退出程序？所有正在运行的子进程会被终止。", "确认退出",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
-                return;
-
-            _reallyExit = true;
-            uILogView.Dispose();
-            _tray.Visible = false;
-            _tray.Dispose();
-            _engine.TaskStateChanged -= OnEngineTaskStateChanged;
-            _engine.Dispose();
-
-            Close();
-            Application.ExitThread();
         }
 
         protected override void OnResize(EventArgs e)
@@ -436,6 +479,16 @@ namespace YTS.TaskTimer.UIForms
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
+        }
+
+        public void OnLog(string text)
+        {
+            uILogView.WriteLog(text);
+        }
+
+        public void OnTaskStateChanged(ScheduleConfig schedule, string text)
+        {
+            uILogView.WriteLog($"任务[{schedule.Name}]状态更改: {text}");
         }
     }
 }
