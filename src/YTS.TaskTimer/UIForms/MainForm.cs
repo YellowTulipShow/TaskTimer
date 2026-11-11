@@ -7,8 +7,10 @@ namespace YTS.TaskTimer.UIForms
     {
         private readonly NotifyIcon _tray;
         private readonly Icon _trayIcon;
+        private readonly ListView logList;
 
         private readonly ILog log;
+        private readonly IUILogView uILogView;
         private readonly IPowerOnStartup powerOnStartup;
         public MainForm(ILog log, IPowerOnStartup powerOnStartup)
         {
@@ -21,16 +23,37 @@ namespace YTS.TaskTimer.UIForms
             // 设置窗口图标
             self.Icon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
 
+            // 日志展示
+            uILogView = new LogListView();
+            logList = uILogView.GetListView();
+            logList.Dock = DockStyle.Fill;
+            self.Controls.Add(logList);
+
             // 创建菜单栏工具
             MenuStrip menu = UICreateMenuStrip();
+            menu.Dock = DockStyle.Top;
             self.Controls.Add(menu);
             self.MainMenuStrip = menu;
 
             // 创建通知小图标
             _trayIcon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
             _tray = UICreateNotifyIcon(_trayIcon);
+
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1", EUILogViewType.INFO);
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1", EUILogViewType.ERROR);
+            uILogView.WriteLog(@"测试1\nlfwliejfijwe理解饿了季节理解而为了房间里玩金额累计\n服务金额老骥伏枥忘记了叫我雷锋家里价位附近");
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1", EUILogViewType.WARN);
+            uILogView.WriteLog("测试1");
+            uILogView.WriteLog("测试1", EUILogViewType.DEBUG);
         }
-        private void FormStyleConfig(Form self)
+        private static void FormStyleConfig(Form self)
         {
             // 窗体基本属性（等价于设计器里做的事）
             self.Text = "任务计划程序";
@@ -38,7 +61,6 @@ namespace YTS.TaskTimer.UIForms
             self.Size = new Size(900, 600);
             self.MinimumSize = new Size(600, 400);
         }
-
 
         private ToolStripMenuItem UICreateToolStripMenuItem_System()
         {
@@ -136,6 +158,8 @@ namespace YTS.TaskTimer.UIForms
                 _tray.Visible = false;
                 _tray.Dispose();
                 _trayIcon.Dispose();
+
+                uILogView.Dispose();
             }
             base.Dispose(disposing);
         }
