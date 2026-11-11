@@ -16,7 +16,6 @@ namespace YTS.TaskTimer.UIForms
         private readonly ListView logList;
         private readonly SplitContainer _split;
         private readonly ToolStripStatusLabel _statusLabel;
-    private readonly ContextMenuStrip _trayMenu;
 
         private readonly ILog log;
         private readonly IUILogView uILogView;
@@ -115,14 +114,12 @@ namespace YTS.TaskTimer.UIForms
             {
                 if (WindowState == FormWindowState.Minimized && _config.CloseToTray)
                 {
-                    Hide();
-                    ShowInTaskbar = false;
+                    BeginInvoke(HideToTray);
                 }
                 SafeSetSplitterDistance(_split, 460);
             };
             Shown += (_, _) =>
             {
-                // try { _split.SplitterDistance = Math.Min(460, _split.Width - 200); } catch { }
                 UpdateStatusBar();
                 SafeSetSplitterDistance(_split, 460);
             };
@@ -150,10 +147,7 @@ namespace YTS.TaskTimer.UIForms
             if (e.CloseReason == CloseReason.UserClosing && _config.CloseToTray)
             {
                 e.Cancel = true;
-                Hide();
-                ShowInTaskbar = false;
-                _tray.ShowBalloonTip(2000, "定时任务管理器",
-                    "已最小化到托盘，任务继续运行", ToolTipIcon.Info);
+                BeginInvoke(HideToTray);
             }
         }
         private static void FormStyleConfig(Form self)
@@ -352,18 +346,21 @@ namespace YTS.TaskTimer.UIForms
 
             var file = new ToolStripMenuItem("文件");
             file.DropDownItems.Add(new ToolStripMenuItem("新建任务", null, (_, _) => OnNewTask())
-            { ShortcutKeys = Keys.Control | Keys.N });
+            {
+                ShortcutKeys = Keys.Control | Keys.N
+            });
             file.DropDownItems.Add(new ToolStripMenuItem("保存配置", null, (_, _) =>
             {
                 ConfigManageExtend.SaveConfigFileContent(_config);
                 SetStatus("配置已保存");
             })
-            { ShortcutKeys = Keys.Control | Keys.S });
-            file.DropDownItems.Add(new ToolStripSeparator());
+            {
+                ShortcutKeys = Keys.Control | Keys.S
+            });
+            file.DropDownItems.Add(new ToolStripSeparator()); // 工具栏分隔符
             file.DropDownItems.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
 
             var tools = new ToolStripMenuItem("工具");
-
             // 开机自启动
             {
                 // 创建一个可勾选的菜单项
@@ -400,32 +397,67 @@ namespace YTS.TaskTimer.UIForms
                 tools.DropDownItems.Add(autoStartMenuItem);
             }
 
-            var closeToTray = new ToolStripMenuItem("关闭时最小化到托盘")
+            // 关闭时最小化到托盘
             {
-                CheckOnClick = true,
-                Checked = _config.CloseToTray
-            };
-            closeToTray.Click += (_, _) =>
-            {
-                _config.CloseToTray = closeToTray.Checked;
-                ConfigManageExtend.SaveConfigFileContent(_config);
-            };
-            tools.DropDownItems.Add(closeToTray);
+                var closeToTray = new ToolStripMenuItem("关闭时最小化到托盘")
+                {
+                    CheckOnClick = true,
+                    Checked = _config.CloseToTray
+                };
+                closeToTray.Click += (_, _) =>
+                {
+                    _config.CloseToTray = closeToTray.Checked;
+                    ConfigManageExtend.SaveConfigFileContent(_config);
+                };
+                tools.DropDownItems.Add(closeToTray);
+            }
 
             menu.Items.Add(file);
             menu.Items.Add(tools);
             return menu;
         }
+        private bool _isHidingToTray = false;
+        private FormWindowState _stateBeforeHide = FormWindowState.Normal;
+
+        private void HideToTray()
+        {
+            if (_isHidingToTray) return;
+            _isHidingToTray = true;
+            try
+            {
+                // 记录用户隐藏前的状态（排除 Minimized，因为最小化后我们会主动隐藏）
+                if (WindowState != FormWindowState.Minimized)
+                    _stateBeforeHide = WindowState;
+
+                if (WindowState != FormWindowState.Normal)
+                    WindowState = FormWindowState.Normal;
+
+                Hide();
+                ShowInTaskbar = false;
+                _tray.ShowBalloonTip(2000, "定时任务管理器",
+                    "已最小化到托盘，任务继续运行", ToolTipIcon.Info);
+            }
+            finally { _isHidingToTray = false; }
+        }
 
         private void ShowMainWindow()
         {
-            Show();
-            WindowState = FormWindowState.Normal;
             ShowInTaskbar = true;
+            Show();
+            WindowState = _stateBeforeHide;   // ★ 恢复到隐藏前的状态
             Activate();
         }
-        private ContextMenuStrip BuildTrayMenu()
+
+
+        private NotifyIcon UICreateNotifyIcon(Icon icon)
         {
+            NotifyIcon t = new()
+            {
+                Icon = icon,
+                Text = "任务计划程序",           // 提示文字，≤ 63 字符
+                Visible = true
+            };
+
             var ctx = new ContextMenuStrip();
             ctx.Items.Add("打开主界面", null, (_, _) => ShowMainWindow());
             ctx.Items.Add("退出", null, (_, _) => ExitApplication());
@@ -446,39 +478,10 @@ namespace YTS.TaskTimer.UIForms
                     ctx.Items.Insert(insertAt++, item);
                 }
             };
-            return ctx;
-        }
 
-
-        private NotifyIcon UICreateNotifyIcon(Icon icon)
-        {
-            NotifyIcon t = new()
-            {
-                Icon = icon,
-                Text = "任务计划程序",           // 提示文字，≤ 63 字符
-                Visible = true
-            };
-
-            // ContextMenuStrip ctx = new();
-            // ctx.Items.Add("显示主窗口", null, (_, _) => ShowMainWindow());
-            // ctx.Items.Add("退出", null, (_, _) => { t.Visible = false; Close(); });
-            // t.ContextMenuStrip = ctx;
-            ContextMenuStrip _trayMenu = BuildTrayMenu();
-            t.ContextMenuStrip = _trayMenu;
+            t.ContextMenuStrip = ctx;
             t.DoubleClick += (_, _) => ShowMainWindow();
             return t;
-        }
-
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-            if (WindowState == FormWindowState.Minimized)
-                Hide();   // 配合 NotifyIcon 实现最小化到托盘
-        }
-
-        protected override void OnClosed(EventArgs e)
-        {
-            base.OnClosed(e);
         }
 
         public void OnLog(string text)

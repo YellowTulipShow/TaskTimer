@@ -22,6 +22,8 @@ namespace YTS.Logic.Implement
 
     public sealed class SchedulerEngine : ISchedulerEngine
     {
+        private const string time_format = "yyyy-hh-dd HH:mm:ss";
+        private readonly ILog log;
         private AppConfig? _config;
         private readonly System.Timers.Timer _timer;
         private readonly object _gate = new();
@@ -33,8 +35,9 @@ namespace YTS.Logic.Implement
             return callbackLibrary.RegisterCallback(callback);
         }
 
-        public SchedulerEngine(ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary)
+        public SchedulerEngine(ILog log, ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary)
         {
+            this.log = log;
             this.callbackLibrary = callbackLibrary;
             _timer = new System.Timers.Timer(30_000) { AutoReset = true };
             _timer.Elapsed += (_, _) => Tick();
@@ -51,6 +54,7 @@ namespace YTS.Logic.Implement
             {
                 calls[i].OnLog(text);
             }
+            log.Info(text);
         }
         private void TaskStateChanged(ScheduleConfig schedule, string text)
         {
@@ -92,7 +96,7 @@ namespace YTS.Logic.Implement
             try
             {
                 var now = DateTimeOffset.UtcNow;
-                Log($"定时器检测时间点: {now.ToString("yyyy-hh-dd HH:mm:ss")}");
+                Log($"定时器检测时间点: {now.ToString(time_format)}");
                 foreach (var s in _config.Schedules.ToArray())
                 {
                     Log($"遍历任务[{s.Name}]");
@@ -110,7 +114,7 @@ namespace YTS.Logic.Implement
                     }
                     else
                     {
-                        Log($"不在时间点: {s.NextRunAt?.ToString("yyyy-hh-dd HH:mm:ss")}");
+                        Log($"不在时间点: {s.NextRunAt?.ToString(time_format)} | {now.ToString(time_format)}");
                     }
                 }
             }
