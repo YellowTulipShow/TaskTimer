@@ -10,9 +10,16 @@ namespace YTS.TaskTimer.UITools
     public interface IUILogView : IDisposable
     {
         /// <summary>
+        /// 设置配置项
+        /// </summary>
+        /// <param name="config">配置项</param>
+        void SetConfig(MUILogViewConfig config);
+
+        /// <summary>
         /// 获取展示控件
         /// </summary>
-        ListView GetListView();
+        Control GetLogControl();
+
         /// <summary>
         /// 写入日志内容
         /// </summary>
@@ -30,15 +37,25 @@ namespace YTS.TaskTimer.UITools
         ERROR = 3,
         WARN = 4,
     }
+    /// <summary>
+    /// 数据模型: UI日志展示配置项
+    /// </summary>
+    public sealed class MUILogViewConfig
+    {
+        /// <summary>
+        /// 日志展示最大行数
+        /// </summary>
+        public int LogMaxLineCount { get; set; } = 1000;
+    }
 
     public class LogListView : IUILogView
     {
+        private MUILogViewConfig config;
         private sealed record LogEntry(DateTime Time, EUILogViewType Level, string Message);
         private readonly ListView _logList;
         private readonly List<LogEntry> _logs = [];
         private readonly ConcurrentQueue<LogEntry> _pending = new();
         private System.Windows.Forms.Timer? _flushTimer;
-        private const int MaxRows = 5000;
         private readonly int[] _fixedColWidths = [150, 60]; // 时间 / 级别
         private const int LastColMinWidth = 120;                  // 消息列最小宽度
         private readonly ContextMenuStrip _logMenu;
@@ -46,6 +63,11 @@ namespace YTS.TaskTimer.UITools
 
         public LogListView()
         {
+            config = new MUILogViewConfig
+            {
+                LogMaxLineCount = 5000,
+            };
+
             _logList = new ListView
             {
                 View = View.Details,
@@ -60,7 +82,12 @@ namespace YTS.TaskTimer.UITools
             _logList.Columns.Add("级别", _fixedColWidths[1]);
             _logList.Columns.Add("消息", 600);
             _logList.RetrieveVirtualItem += OnRetrieveVirtualItem;
-            _logList.Resize += (_, _) => ResizeLogColumns();
+            _logList.Resize += (_, _) =>
+            {
+                ResizeLogColumns();
+                // ★ 最大化/最小化时，虚拟项缓存失效，需要强制重绘
+                _logList.Invalidate(true);   // true = 同时重绘子控件
+            };
             _logList.KeyDown += (_, e) =>
             {
                 if (e.Control && e.KeyCode == Keys.C)
@@ -107,6 +134,12 @@ namespace YTS.TaskTimer.UITools
             _logList.ContextMenuStrip = _logMenu;
         }
 
+        public void SetConfig(MUILogViewConfig config)
+        {
+            if (config == null) return;
+            this.config = config;
+        }
+
         private static string ToMessage(LogEntry? log)
         {
             if (log == null) return "<空日志>";
@@ -121,9 +154,11 @@ namespace YTS.TaskTimer.UITools
                 _flushTimer.Dispose();
                 _flushTimer = null;
             }
+            _logMenu?.Dispose();
+            _logList?.Dispose();
         }
 
-        public ListView GetListView() => _logList;
+        public Control GetLogControl() => _logList;
 
         public void WriteLog(string message, EUILogViewType type = EUILogViewType.INFO)
         {
@@ -142,14 +177,51 @@ namespace YTS.TaskTimer.UITools
             }
             if (added == 0) return;
 
-            if (_logs.Count > MaxRows)
-                _logs.RemoveRange(0, _logs.Count - MaxRows);
+            // 记录限行前是否发生过 RemoveRange（会改变索引基准，需要后续强制刷新）
+            bool trimmed = false;
+            if (_logs.Count > config.LogMaxLineCount)
+            {
+                int removeCount = _logs.Count - config.LogMaxLineCount;
+                _logs.RemoveRange(0, removeCount);
+                trimmed = true;
+            }
 
-            _logList.VirtualListSize = _logs.Count;
-            _logList.Invalidate();
-            ResizeLogColumns();               // ★ 补上这句
+            _logList.BeginUpdate();
+            try
+            {
+                _logList.VirtualListSize = _logs.Count;
+            }
+            finally
+            {
+                _logList.EndUpdate();
+            }
+
+            // ★ 限行后必须 Refresh：RemoveRange 改变了所有索引，旧滚动位置失效
+            // 普通追加时用 Invalidate 足够；限行后 Invalidate 可能触发"幽灵行"
+            if (trimmed)
+                _logList.Refresh();
+            else
+                _logList.Invalidate();
+
+            ResizeLogColumns();
+
             if (_logs.Count > 0)
-                _logList.EnsureVisible(_logs.Count - 1);
+            {
+                // ★ 延迟到布局完成后再 EnsureVisible
+                // 直接在 FlushLog 里调用，此时 ListView 内部布局可能还没算完
+                // 滚动位置会算错 → 显示在"底部往上 1/3"
+                int lastIndex = _logs.Count - 1;
+                _logList.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        if (_logList.IsDisposed) return;
+                        if (lastIndex >= _logList.VirtualListSize) return;
+                        _logList.EnsureVisible(lastIndex);
+                    }
+                    catch { }
+                });
+            }
         }
 
         private void OnRetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e)
@@ -263,10 +335,27 @@ namespace YTS.TaskTimer.UITools
         private void ClearLogs()
         {
             _logs.Clear();
-            _pending.Clear();                 // 队列里还没刷的也一起清掉
-            _logList.VirtualListSize = 0;     // ★ 虚拟模式必须重置总数
-            _logList.Invalidate();
-            ResizeLogColumns();               // 滚动条消失，列宽可能要重算
+            _pending.Clear();
+
+            _logList.BeginUpdate();
+            try
+            {
+                // ★ 核心修复：临时切换 VirtualMode 来彻底清空内部状态
+                // 直接 _logList.VirtualListSize = 0 只改"总数"，滚动位置残留在旧值
+                // 切换模式会重建 ListView 的虚拟列表内部结构，滚动位置真正归零
+                _logList.VirtualMode = false;
+                _logList.Items.Clear();      // 真正清空 Items
+                _logList.VirtualMode = true;
+                // 此时 ListView 内部 TopItem = null, ScrollPosition = 0
+            }
+            finally
+            {
+                _logList.EndUpdate();
+            }
+
+            // ★ 用 Refresh() 而不是 Invalidate()：同步强制重绘
+            _logList.Refresh();
+            ResizeLogColumns();
         }
     }
 }

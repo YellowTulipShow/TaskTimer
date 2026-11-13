@@ -12,6 +12,7 @@ namespace YTS.Logic
             {
                 Schedules = [],
                 CloseToTray = true,
+                LogMaxLineCount = 1000,
             };
         }
 

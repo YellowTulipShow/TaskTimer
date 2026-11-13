@@ -13,7 +13,6 @@ namespace YTS.TaskTimer.UIForms
         private readonly NotifyIcon _tray;
         private readonly Icon _trayIcon;
         private readonly ListView _taskList;
-        private readonly ListView logList;
         private readonly SplitContainer _split;
         private readonly ToolStripStatusLabel _statusLabel;
 
@@ -76,9 +75,13 @@ namespace YTS.TaskTimer.UIForms
 
             // 日志展示
             uILogView = new LogListView();
-            logList = uILogView.GetListView();
-            logList.Dock = DockStyle.Fill;
-            self.Controls.Add(logList);
+            uILogView.SetConfig(new MUILogViewConfig()
+            {
+                LogMaxLineCount = _config.LogMaxLineCount,
+            });
+            Control logControl = uILogView.GetLogControl();
+            logControl.Dock = DockStyle.Fill;
+            self.Controls.Add(logControl);
 
             _split = new SplitContainer
             {
@@ -90,7 +93,7 @@ namespace YTS.TaskTimer.UIForms
             };
             _taskList = UICreateTaskList();
             _split.Panel1.Controls.Add(_taskList);
-            _split.Panel2.Controls.Add(logList);
+            _split.Panel2.Controls.Add(logControl);
 
             var status = new StatusStrip();
             _statusLabel = new ToolStripStatusLabel("就绪");
