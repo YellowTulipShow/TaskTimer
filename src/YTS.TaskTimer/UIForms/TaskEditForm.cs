@@ -1,10 +1,7 @@
-
-
 using YTS.Logic.Models;
 
 namespace YTS.TaskTimer.UIForms
 {
-
     public sealed class TaskEditForm : Form
     {
         private readonly ScheduleConfig _config;
@@ -16,14 +13,14 @@ namespace YTS.TaskTimer.UIForms
         private readonly TextBox _wdBox;
         private readonly TextBox _cronBox;
         private readonly CheckBox _enabledBox;
-        private readonly Label _previewLabel;
+        private readonly Label[] _previewLabels;
 
         public TaskEditForm(ScheduleConfig config)
         {
             _config = config;
 
             Text = "编辑任务";
-            Size = new Size(640, 420);
+            Size = new Size(640, 520);                  // ★ 高度 420 → 520
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -40,7 +37,11 @@ namespace YTS.TaskTimer.UIForms
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
-            for (int i = 0; i < 6; i++) table.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+
+            // ★ 前 5 行 36，预览行 112，最后一行 48
+            for (int i = 0; i < 5; i++)
+                table.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
             table.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
 
             table.Controls.Add(MakeLabel("名称"), 0, 0);
@@ -71,15 +72,36 @@ namespace YTS.TaskTimer.UIForms
             table.Controls.Add(_cronBox, 1, 4);
             table.SetColumnSpan(_cronBox, 2);
 
+            // ★ 预览区：1 列 5 行的 TableLayoutPanel
             table.Controls.Add(MakeLabel("预览"), 0, 5);
-            _previewLabel = new Label
+
+            var previewPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.DarkSlateBlue
+                ColumnCount = 1,
+                RowCount = 5,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
-            table.Controls.Add(_previewLabel, 1, 5);
-            table.SetColumnSpan(_previewLabel, 2);
+            previewPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            _previewLabels = new Label[5];
+            for (int i = 0; i < 5; i++)
+            {
+                previewPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
+                _previewLabels[i] = new Label
+                {
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    ForeColor = Color.DarkSlateBlue,
+                    AutoSize = false,
+                    Text = $"第 {i + 1} 次：—"
+                };
+                previewPanel.Controls.Add(_previewLabels[i], 0, i);
+            }
+
+            table.Controls.Add(previewPanel, 1, 5);
+            table.SetColumnSpan(previewPanel, 2);
 
             var quickPanel = new FlowLayoutPanel
             {
@@ -119,10 +141,7 @@ namespace YTS.TaskTimer.UIForms
                 Padding = new Padding(0),
                 AutoSize = true,
                 FlatStyle = FlatStyle.Flat,
-                FlatAppearance =
-                {
-                    BorderSize = 0,
-                },
+                FlatAppearance = { BorderSize = 0 }
             };
             var cancelBtn = new Button
             {
@@ -134,10 +153,7 @@ namespace YTS.TaskTimer.UIForms
                 Padding = new Padding(0),
                 AutoSize = true,
                 FlatStyle = FlatStyle.Flat,
-                FlatAppearance =
-                {
-                    BorderSize = 0,
-                },
+                FlatAppearance = { BorderSize = 0 }
             };
             okBtn.Click += (_, _) => SaveAndClose();
             btnPanel.Controls.Add(cancelBtn);
@@ -186,16 +202,36 @@ namespace YTS.TaskTimer.UIForms
             try
             {
                 var expr = Cronos.CronExpression.Parse(_cronBox.Text, Cronos.CronFormat.Standard);
-                var next = expr.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.Local);
-                _previewLabel.Text = next is null
-                    ? "无法计算"
-                    : $"下次触发：{next.Value:yyyy-MM-dd HH:mm:ss}";
-                _previewLabel.ForeColor = Color.DarkSlateBlue;
+
+                var from = DateTimeOffset.UtcNow;
+                for (int i = 0; i < _previewLabels.Length; i++)
+                {
+                    var next = expr.GetNextOccurrence(from, TimeZoneInfo.Local);
+                    if (next is null)
+                    {
+                        _previewLabels[i].Text = $"第 {i + 1} 次：无法计算";
+                        _previewLabels[i].ForeColor = Color.Red;
+                        for (int j = i + 1; j < _previewLabels.Length; j++)
+                        {
+                            _previewLabels[j].Text = $"第 {j + 1} 次：—";
+                            _previewLabels[j].ForeColor = Color.DarkSlateBlue;
+                        }
+                        return;
+                    }
+
+                    _previewLabels[i].Text = $"第 {i + 1} 次：{next.Value:yyyy-MM-dd HH:mm:ss}";
+                    _previewLabels[i].ForeColor = Color.DarkSlateBlue;
+
+                    from = next.Value;   // ★ 上一次的结果作为下一次的起点
+                }
             }
             catch (Exception ex)
             {
-                _previewLabel.Text = $"表达式无效：{ex.Message}";
-                _previewLabel.ForeColor = Color.Red;
+                for (int i = 0; i < _previewLabels.Length; i++)
+                {
+                    _previewLabels[i].Text = i == 0 ? $"表达式无效：{ex.Message}" : "";
+                    _previewLabels[i].ForeColor = Color.Red;
+                }
             }
         }
 
@@ -220,5 +256,4 @@ namespace YTS.TaskTimer.UIForms
             DialogResult = DialogResult.OK;
         }
     }
-
 }
