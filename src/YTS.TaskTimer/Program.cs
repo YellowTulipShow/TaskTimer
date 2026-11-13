@@ -24,17 +24,13 @@ static class Program
         builder = Host.CreateApplicationBuilder();
         IServiceCollection service = builder.Services;
 
-        // 注入自定义的DI工厂管理器
-        DependencyInjectionDIManage diManage = new(service);
-        service.AddSingleton<IDIFactoryRead>((_) => diManage);
         // 3. 注册你的服务（详见下文）
+        DependencyInjectionImplementationCaseInstallExtend.RegisterExecute(service);
         ConfigureServices(service);
-        DependencyInjectionImplementationCaseInstallExtend.RegisterExecute(diManage);
 
         // 4. 构建主机
         using IHost host = builder.Build();
         IServiceProvider provider = host.Services;
-        diManage.SetIServiceProvider(provider);
 
         using ISchedulerEngine engine = provider.GetRequiredService<ISchedulerEngine>();
         engine.Start();
@@ -65,9 +61,6 @@ static class Program
             ILog log = sp.GetRequiredService<ILog>();
             return new PowerOnStartupWindow(ReSourceConst.PowerOnStartupSignName, log);
         });
-
-        // 注册: 回调管理工具注册
-        services.AddTransient(typeof(ICallbackLibraryManage<>), typeof(CallbackLibraryManage<>));
 
 
         // 其他依赖项...
