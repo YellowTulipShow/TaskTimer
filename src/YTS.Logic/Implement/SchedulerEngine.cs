@@ -22,7 +22,7 @@ namespace YTS.Logic.Implement
 
     public sealed class SchedulerEngine : ISchedulerEngine
     {
-        private const string time_format = "yyyy-hh-dd HH:mm:ss";
+        private const string time_format = "yyyy-MM-dd HH:mm:ss";
         private readonly ILog log;
         private AppConfig? _config;
         private readonly System.Timers.Timer _timer;
@@ -96,8 +96,8 @@ namespace YTS.Logic.Implement
             try
             {
                 var now = DateTimeOffset.UtcNow;
-                Log($"定时器检测时间点: {now.ToString(time_format)}");
-                foreach (var s in _config.Schedules.ToArray())
+                Log($"定时器检测时间点: 当前时间[{FormatLocal(now)}]");
+                foreach (ScheduleConfig? s in _config.Schedules.ToArray())
                 {
                     Log($"遍历任务[{s.Name}]");
                     if (!s.Enabled) continue;
@@ -108,17 +108,21 @@ namespace YTS.Logic.Implement
                     }
                     if (s.NextRunAt <= now)
                     {
-                        Log($"符合时间点准备执行");
+                        Log($"符合时间点准备执行! 目标时间[{FormatLocal(s.NextRunAt)}] | 当前时间[{FormatLocal(now)}]");
                         Launch(s);
                         s.NextRunAt = s.ComputeNext(now);
                     }
                     else
                     {
-                        Log($"不在时间点: {s.NextRunAt?.ToString(time_format)} | {now.ToString(time_format)}");
+                        Log($"不在时间点! 目标时间[{FormatLocal(s.NextRunAt)}] | 当前时间[{FormatLocal(now)}]");
                     }
                 }
             }
             finally { Monitor.Exit(_gate); }
+        }
+        private static string FormatLocal(DateTimeOffset? value)
+        {
+            return value?.ToLocalTime().ToString(time_format) ?? "—";
         }
 
         /// <summary>立即手动运行一次（不改变下次计划时间）</summary>
@@ -154,11 +158,11 @@ namespace YTS.Logic.Implement
                     s.RunningProcessId = null;
                     int code = -1;
                     try { code = p.ExitCode; } catch { }
-                    TaskStateChanged(s, $"已结束（ExitCode={code}）");
+                    TaskStateChanged(s, $"已结束(ExitCode={code})");
                     p.Dispose();
                 };
 
-                TaskStateChanged(s, $"已启动，PID={p.Id}");
+                TaskStateChanged(s, $"已启动, PID={p.Id}");
             }
             catch (Exception ex)
             {
