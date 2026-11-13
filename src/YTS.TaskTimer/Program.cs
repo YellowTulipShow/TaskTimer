@@ -13,6 +13,15 @@ static class Program
     [STAThread]
     static void Main()
     {
+        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        // 创建互斥体，确保只有一个实例运行
+        using Mutex mutex = new(true, @"YTS.TaskTimer", out bool createdNew);
+        if (!createdNew)
+        {
+            MessageBox.Show("应用程序已经在运行中！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return; // 已有实例，退出
+        }
+
         // 1. 初始化 WinForms 默认配置（视觉样式、DPI 等）
         ApplicationConfiguration.Initialize();
         Application.ThreadException += (_, e) =>
