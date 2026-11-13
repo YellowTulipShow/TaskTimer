@@ -7,9 +7,20 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}"
+                "${workspaceFolder}/src/YTS.TaskTimer/YTS.TaskTimer.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
             ],
-            "problemMatcher": "$msCompile"
+            "problemMatcher": {
+                "owner": "my-custom-build",
+                "source": "dotnet",
+                "fileLocation": ["autoDetect", "${workspaceFolder}/src/YTS.TaskTimer"],
+                "pattern": "$msCompile"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }

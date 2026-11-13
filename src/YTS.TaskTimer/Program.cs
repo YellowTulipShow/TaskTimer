@@ -15,7 +15,7 @@ static class Program
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         // 创建互斥体，确保只有一个实例运行
-        using Mutex mutex = new(true, @"YTS.TaskTimer", out bool createdNew);
+        using Mutex mutex = new(true, ReSourceConst.PowerOnStartupSignName, out bool createdNew);
         if (!createdNew)
         {
             MessageBox.Show("应用程序已经在运行中！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);

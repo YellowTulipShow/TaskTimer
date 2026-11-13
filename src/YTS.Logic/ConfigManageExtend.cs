@@ -1,30 +1,25 @@
-﻿using System.IO;
-using System.Text;
+﻿using System.Text;
+
 using YTS.Logic.Models;
 
 namespace YTS.Logic
 {
-
     public static class ConfigManageExtend
     {
         private static AppConfig DefalutGet()
         {
             return new AppConfig()
             {
-                AutoStartWithWindows = true,
+                Schedules = [],
+                CloseToTray = true,
             };
         }
 
-        public static AppConfig ReadConfigFileContent()
+        private static readonly Encoding encoding = Encoding.UTF8;
+
+        public static AppConfig ReadConfigFileContent(ISerializer serializer)
         {
-            Encoding encoding = Encoding.UTF8;
-            string file_path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                "runConfig.json");
-            FileInfo file = new(file_path);
-            DirectoryInfo dire = file.Directory ?? throw new Exception("文件目录为空");
-            if (!dire.Exists)
-                dire.Create();
-            ISerializer serializer = new TextJSONSerializer();
+            FileInfo file = GetConfigFileInfo();
             AppConfig defaultConfigs = DefalutGet();
             if (!file.Exists)
             {
@@ -43,20 +38,20 @@ namespace YTS.Logic
             AppConfig config = serializer.Deserialize<AppConfig>(content);
             return config;
         }
-        public static void SaveConfigFileContent(AppConfig config)
+        private static FileInfo GetConfigFileInfo()
         {
-            Encoding encoding = Encoding.UTF8;
-            string file_path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                "runConfig.json");
+            string file_path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "runConfig.json");
             FileInfo file = new(file_path);
             DirectoryInfo dire = file.Directory ?? throw new Exception("文件目录为空");
             if (!dire.Exists)
                 dire.Create();
-            ISerializer serializer = new TextJSONSerializer();
+            return file;
+        }
+        public static void SaveConfigFileContent(AppConfig config, ISerializer serializer)
+        {
+            FileInfo file = GetConfigFileInfo();
             if (!file.Exists)
-            {
                 file.Create().Close();
-            }
             string json = serializer.Serialize(config);
             File.WriteAllText(file.FullName, json, encoding);
         }

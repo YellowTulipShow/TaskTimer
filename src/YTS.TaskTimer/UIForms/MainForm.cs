@@ -20,9 +20,10 @@ namespace YTS.TaskTimer.UIForms
         private readonly ILog log;
         private readonly IUILogView uILogView;
         private readonly IPowerOnStartup powerOnStartup;
+        private readonly ISerializer serializer;
 
         private bool _reallyExit;
-        private IDisposable dis_SchedulerEngine_call;
+        private IDisposable? dis_SchedulerEngine_call;
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -32,7 +33,8 @@ namespace YTS.TaskTimer.UIForms
                 _trayIcon.Dispose();
 
                 uILogView.Dispose();
-                dis_SchedulerEngine_call.Dispose();
+                dis_SchedulerEngine_call?.Dispose();
+                dis_SchedulerEngine_call = null;
                 _engine.Dispose();
             }
             base.Dispose(disposing);
@@ -47,19 +49,21 @@ namespace YTS.TaskTimer.UIForms
             uILogView.Dispose();
             _tray.Visible = false;
             _tray.Dispose();
-            dis_SchedulerEngine_call.Dispose();
+            dis_SchedulerEngine_call?.Dispose();
+            dis_SchedulerEngine_call = null;
             _engine.Dispose();
 
             Close();
             Application.ExitThread();
         }
 
-        public MainForm(ILog log, IPowerOnStartup powerOnStartup, ISchedulerEngine engine)
+        public MainForm(ILog log, IPowerOnStartup powerOnStartup, ISchedulerEngine engine, ISerializer serializer)
         {
             this.log = log;
             this.powerOnStartup = powerOnStartup;
+            this.serializer = serializer;
 
-            _config = ConfigManageExtend.ReadConfigFileContent();
+            _config = ConfigManageExtend.ReadConfigFileContent(serializer);
             _engine = engine;
             _engine.LoadConfig(_config);
             dis_SchedulerEngine_call = _engine.RegisterCallback(this);
@@ -210,7 +214,7 @@ namespace YTS.TaskTimer.UIForms
             {
                 _config.Schedules.Add(f.Result);
                 _engine.RefreshSchedule(f.Result.Id);
-                ConfigManageExtend.SaveConfigFileContent(_config);
+                ConfigManageExtend.SaveConfigFileContent(_config, serializer);
                 RefreshTaskList();
                 uILogView.WriteLog($"[系统]新增任务「{f.Result.Name}」");
             }
@@ -231,7 +235,7 @@ namespace YTS.TaskTimer.UIForms
                 s.Cron = f.Result.Cron;
                 s.Enabled = f.Result.Enabled;
                 _engine.RefreshSchedule(s.Id);
-                ConfigManageExtend.SaveConfigFileContent(_config);
+                ConfigManageExtend.SaveConfigFileContent(_config, serializer);
                 RefreshTaskList();
                 uILogView.WriteLog($"[系统]修改任务「{s.Name}」");
             }
@@ -254,7 +258,7 @@ namespace YTS.TaskTimer.UIForms
                 return;
 
             _config.Schedules.Remove(s);
-            ConfigManageExtend.SaveConfigFileContent(_config);
+            ConfigManageExtend.SaveConfigFileContent(_config, serializer);
             RefreshTaskList();
             uILogView.WriteLog($"[系统]删除任务「{s.Name}」");
         }
@@ -351,7 +355,7 @@ namespace YTS.TaskTimer.UIForms
             });
             file.DropDownItems.Add(new ToolStripMenuItem("保存配置", null, (_, _) =>
             {
-                ConfigManageExtend.SaveConfigFileContent(_config);
+                ConfigManageExtend.SaveConfigFileContent(_config, serializer);
                 SetStatus("配置已保存");
             })
             {
@@ -407,7 +411,7 @@ namespace YTS.TaskTimer.UIForms
                 closeToTray.Click += (_, _) =>
                 {
                     _config.CloseToTray = closeToTray.Checked;
-                    ConfigManageExtend.SaveConfigFileContent(_config);
+                    ConfigManageExtend.SaveConfigFileContent(_config, serializer);
                 };
                 tools.DropDownItems.Add(closeToTray);
             }
