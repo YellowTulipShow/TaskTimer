@@ -110,11 +110,38 @@ namespace YTS.TaskTimer.UIForms
                 FlowDirection = FlowDirection.RightToLeft,
                 Padding = new Padding(0, 8, 12, 0)
             };
-            var okBtn = new Button { Text = "确定", Size = new Size(88, 30) };
-            var cancelBtn = new Button { Text = "取消", Size = new Size(88, 30), DialogResult = DialogResult.Cancel };
+            var okBtn = new Button
+            {
+                Text = "确定",
+                Size = new Size(88, 30),
+                BackColor = Color.Green,
+                ForeColor = Color.White,
+                Padding = new Padding(0),
+                AutoSize = true,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance =
+                {
+                    BorderSize = 0,
+                },
+            };
+            var cancelBtn = new Button
+            {
+                Text = "取消",
+                Size = new Size(88, 30),
+                DialogResult = DialogResult.Cancel,
+                BackColor = Color.Red,
+                ForeColor = Color.White,
+                Padding = new Padding(0),
+                AutoSize = true,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance =
+                {
+                    BorderSize = 0,
+                },
+            };
             okBtn.Click += (_, _) => SaveAndClose();
-            btnPanel.Controls.Add(okBtn);
             btnPanel.Controls.Add(cancelBtn);
+            btnPanel.Controls.Add(okBtn);
 
             Controls.Add(table);
             Controls.Add(btnPanel);

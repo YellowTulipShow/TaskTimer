@@ -1,22 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net9.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <UseWindowsForms>true</UseWindowsForms>
+        <ImplicitUsings>enable</ImplicitUsings>
         <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-  </PropertyGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\app.ico" />
+        <PublishAot>false</PublishAot>
+        <PublishTrimmed>false</PublishTrimmed>
+        <IsRidAgnostic>false</IsRidAgnostic>
+        <!-- 新增：启用单文件发布 -->
+        <PublishSingleFile>true</PublishSingleFile>
+        <!-- .NET 9 WinForm 单文件 x64 的兼容性关键配置 -->
+        <CETCompat>false</CETCompat>
+    </PropertyGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="Assets\app.ico" />
     </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\YTS.Logic\YTS.Logic.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Cronos" Version="0.13.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <ProjectReference Include="..\YTS.Logic\YTS.Logic.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Cronos" Version="0.13.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    </ItemGroup>
 </Project>
