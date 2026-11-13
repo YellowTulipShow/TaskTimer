@@ -1,5 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
+        <Title>定时运行任务</Title>
+        <PackageId>TaskTimer</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>YellowTulipShow</Authors>
+        <RepositoryType>git</RepositoryType>
+        <NeutralLanguage>zh</NeutralLanguage>
+        <RepositoryUrl>https://github.com/YellowTulipShow/TaskTimer</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/YellowTulipShow/TaskTimer</PackageProjectUrl>
+
         <OutputType>WinExe</OutputType>
         <TargetFramework>net9.0-windows</TargetFramework>
         <Nullable>enable</Nullable>
