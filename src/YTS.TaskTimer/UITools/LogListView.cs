@@ -1,6 +1,8 @@
 
 using System.Collections.Concurrent;
 using System.Text;
+using YTS.Logic;
+using YTS.Logic.Models;
 
 namespace YTS.TaskTimer.UITools
 {
@@ -9,12 +11,6 @@ namespace YTS.TaskTimer.UITools
     /// </summary>
     public interface IUILogView : IDisposable
     {
-        /// <summary>
-        /// 设置配置项
-        /// </summary>
-        /// <param name="config">配置项</param>
-        void SetConfig(MUILogViewConfig config);
-
         /// <summary>
         /// 获取展示控件
         /// </summary>
@@ -37,20 +33,9 @@ namespace YTS.TaskTimer.UITools
         ERROR = 3,
         WARN = 4,
     }
-    /// <summary>
-    /// 数据模型: UI日志展示配置项
-    /// </summary>
-    public sealed class MUILogViewConfig
-    {
-        /// <summary>
-        /// 日志展示最大行数
-        /// </summary>
-        public int LogMaxLineCount { get; set; } = 1000;
-    }
 
     public class LogListView : IUILogView
     {
-        private MUILogViewConfig config;
         private sealed record LogEntry(DateTime Time, EUILogViewType Level, string Message);
         private readonly ListView _logList;
         private readonly List<LogEntry> _logs = [];
@@ -61,13 +46,10 @@ namespace YTS.TaskTimer.UITools
         private readonly ContextMenuStrip _logMenu;
         private const string time_format = "yyyy-hh-dd HH:mm:ss";
 
-        public LogListView()
+        private readonly IAppConfigManage configManage;
+        public LogListView(IAppConfigManage configManage)
         {
-            config = new MUILogViewConfig
-            {
-                LogMaxLineCount = 5000,
-            };
-
+            this.configManage = configManage;
             _logList = new ListView
             {
                 View = View.Details,
@@ -134,12 +116,6 @@ namespace YTS.TaskTimer.UITools
             _logList.ContextMenuStrip = _logMenu;
         }
 
-        public void SetConfig(MUILogViewConfig config)
-        {
-            if (config == null) return;
-            this.config = config;
-        }
-
         private static string ToMessage(LogEntry? log)
         {
             if (log == null) return "<空日志>";
@@ -177,11 +153,12 @@ namespace YTS.TaskTimer.UITools
             }
             if (added == 0) return;
 
+            AppConfig config = configManage.Read();
             // 记录限行前是否发生过 RemoveRange（会改变索引基准，需要后续强制刷新）
             bool trimmed = false;
-            if (_logs.Count > config.LogMaxLineCount)
+            if (_logs.Count > config.LogConfig.LogMaxLineCount)
             {
-                int removeCount = _logs.Count - config.LogMaxLineCount;
+                int removeCount = _logs.Count - config.LogConfig.LogMaxLineCount;
                 _logs.RemoveRange(0, removeCount);
                 trimmed = true;
             }

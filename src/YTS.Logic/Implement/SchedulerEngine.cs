@@ -10,8 +10,6 @@ namespace YTS.Logic.Implement
     }
     public interface ISchedulerEngine : IDisposable, ICallbackLibraryUseConfig<ISchedulerEngineCallback>
     {
-        void LoadConfig(AppConfig config);
-
         void Start();
         void Stop();
         /// <summary>立即手动运行一次（不改变下次计划时间）</summary>
@@ -24,29 +22,28 @@ namespace YTS.Logic.Implement
     {
         private const string time_format = "yyyy-MM-dd HH:mm:ss";
         private readonly ILog log;
-        private AppConfig? _config;
+        private readonly IAppConfigManage configManage;
+        private readonly ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary;
+
         private readonly System.Timers.Timer _timer;
         private readonly object _gate = new();
         private readonly Dictionary<Guid, Process> _running = [];
-        private readonly ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary;
+
 
         public IDisposable RegisterCallback(ISchedulerEngineCallback callback)
         {
             return callbackLibrary.RegisterCallback(callback);
         }
 
-        public SchedulerEngine(ILog log, ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary)
+        public SchedulerEngine(ILog log, IAppConfigManage configManage, ICallbackLibraryManage<ISchedulerEngineCallback> callbackLibrary)
         {
             this.log = log;
+            this.configManage = configManage;
             this.callbackLibrary = callbackLibrary;
             _timer = new System.Timers.Timer(30_000) { AutoReset = true };
             _timer.Elapsed += (_, _) => Tick();
         }
 
-        public void LoadConfig(AppConfig config)
-        {
-            _config = config;
-        }
         private void Log(string text)
         {
             var calls = callbackLibrary.GetSubscribedCallbacks();
@@ -75,18 +72,24 @@ namespace YTS.Logic.Implement
 
         private void RecalculateAll()
         {
-            if (_config == null)
+            AppConfig config = configManage.Read();
+            if (config == null)
             {
                 Log("配合项为空, 无法重新计算全部");
                 return;
             }
             var now = DateTimeOffset.UtcNow;
-            foreach (var s in _config.Schedules)
+            foreach (var s in config.Schedules)
                 s.NextRunAt = s.ComputeNext(now);
+        }
+        private bool IsDebugLog(AppConfig _config)
+        {
+            return _config.LogConfig.IsOuputDebugLog;
         }
 
         private void Tick()
         {
+            AppConfig _config = configManage.Read();
             if (_config == null)
             {
                 Log("配合项为空, 无法执行循环任务");
@@ -96,14 +99,19 @@ namespace YTS.Logic.Implement
             try
             {
                 var now = DateTimeOffset.UtcNow;
-                Log($"定时器检测时间点: 当前时间[{FormatLocal(now)}]");
+                if (IsDebugLog(_config))
+                    Log($"定时器检测时间点: 当前时间[{FormatLocal(now)}]");
+
+                bool is_change = false;
                 foreach (ScheduleConfig? s in _config.Schedules.ToArray())
                 {
-                    Log($"遍历任务[{s.Name}]");
+                    if (IsDebugLog(_config))
+                        Log($"遍历任务[{s.Name}]");
                     if (!s.Enabled) continue;
                     if (s.NextRunAt is null)
                     {
                         s.NextRunAt = s.ComputeNext(now);
+                        is_change = true;
                         continue;
                     }
                     if (s.NextRunAt <= now)
@@ -111,12 +119,16 @@ namespace YTS.Logic.Implement
                         Log($"符合时间点准备执行! 目标时间[{FormatLocal(s.NextRunAt)}] | 当前时间[{FormatLocal(now)}]");
                         Launch(s);
                         s.NextRunAt = s.ComputeNext(now);
+                        is_change = true;
                     }
                     else
                     {
-                        Log($"不在时间点! 目标时间[{FormatLocal(s.NextRunAt)}] | 当前时间[{FormatLocal(now)}]");
+                        if (IsDebugLog(_config))
+                            Log($"不在时间点! 目标时间[{FormatLocal(s.NextRunAt)}] | 当前时间[{FormatLocal(now)}]");
                     }
                 }
+                if (is_change)
+                    configManage.Save(_config);
             }
             finally { Monitor.Exit(_gate); }
         }
@@ -145,7 +157,7 @@ namespace YTS.Logic.Implement
                         : s.WorkingDirectory,
                     UseShellExecute = true
                 };
-                var p = Process.Start(psi);
+                Process? p = Process.Start(psi);
                 if (p is null) { TaskStateChanged(s, "启动失败"); return; }
 
                 s.RunningProcessId = p.Id;
@@ -186,6 +198,7 @@ namespace YTS.Logic.Implement
 
         public void RefreshSchedule(Guid id)
         {
+            AppConfig _config = configManage.Read();
             if (_config == null)
             {
                 Log($"配合项为空, 无法执行指定任务: {id}");

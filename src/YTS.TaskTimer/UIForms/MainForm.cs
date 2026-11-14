@@ -19,7 +19,7 @@ namespace YTS.TaskTimer.UIForms
         private readonly ILog log;
         private readonly IUILogView uILogView;
         private readonly IPowerOnStartup powerOnStartup;
-        private readonly ISerializer serializer;
+        private readonly IAppConfigManage configManage;
 
         private bool _reallyExit;
         private IDisposable? dis_SchedulerEngine_call;
@@ -56,15 +56,14 @@ namespace YTS.TaskTimer.UIForms
             Application.ExitThread();
         }
 
-        public MainForm(ILog log, IPowerOnStartup powerOnStartup, ISchedulerEngine engine, ISerializer serializer)
+        public MainForm(ILog log, IPowerOnStartup powerOnStartup, ISchedulerEngine engine, IAppConfigManage configManage)
         {
             this.log = log;
             this.powerOnStartup = powerOnStartup;
-            this.serializer = serializer;
+            this.configManage = configManage;
 
-            _config = ConfigManageExtend.ReadConfigFileContent(serializer);
+            _config = configManage.Read();
             _engine = engine;
-            _engine.LoadConfig(_config);
             dis_SchedulerEngine_call = _engine.RegisterCallback(this);
 
             Form self = this;
@@ -74,11 +73,7 @@ namespace YTS.TaskTimer.UIForms
             self.Icon = IconLoader.FromEmbedded(ReSourceConst.SystemIconReSourceName);
 
             // 日志展示
-            uILogView = new LogListView();
-            uILogView.SetConfig(new MUILogViewConfig()
-            {
-                LogMaxLineCount = _config.LogMaxLineCount,
-            });
+            uILogView = new LogListView(configManage);
             Control logControl = uILogView.GetLogControl();
             logControl.Dock = DockStyle.Fill;
             self.Controls.Add(logControl);
@@ -119,7 +114,7 @@ namespace YTS.TaskTimer.UIForms
             FormClosing += OnFormClosing;
             Resize += (_, _) =>
             {
-                if (WindowState == FormWindowState.Minimized && _config.CloseToTray)
+                if (WindowState == FormWindowState.Minimized && _config.System.CloseToTray)
                 {
                     BeginInvoke(HideToTray);
                 }
@@ -134,6 +129,12 @@ namespace YTS.TaskTimer.UIForms
             RefreshTaskList();
             uILogView.WriteLog($"[系统]程序启动，共 {_config.Schedules.Count} 个任务");
         }
+
+        private void ChangeConfig()
+        {
+            configManage.Save(_config);
+        }
+
         private static void SafeSetSplitterDistance(SplitContainer split, int desired)
         {
             // 控件还没布局好，直接跳过，等下次 Resize / Shown 再设
@@ -151,7 +152,7 @@ namespace YTS.TaskTimer.UIForms
         {
             if (_reallyExit) return;
 
-            if (e.CloseReason == CloseReason.UserClosing && _config.CloseToTray)
+            if (e.CloseReason == CloseReason.UserClosing && _config.System.CloseToTray)
             {
                 e.Cancel = true;
                 BeginInvoke(HideToTray);
@@ -217,7 +218,7 @@ namespace YTS.TaskTimer.UIForms
             {
                 _config.Schedules.Add(f.Result);
                 _engine.RefreshSchedule(f.Result.Id);
-                ConfigManageExtend.SaveConfigFileContent(_config, serializer);
+                ChangeConfig();
                 RefreshTaskList();
                 uILogView.WriteLog($"[系统]新增任务「{f.Result.Name}」");
             }
@@ -238,7 +239,7 @@ namespace YTS.TaskTimer.UIForms
                 s.Cron = f.Result.Cron;
                 s.Enabled = f.Result.Enabled;
                 _engine.RefreshSchedule(s.Id);
-                ConfigManageExtend.SaveConfigFileContent(_config, serializer);
+                ChangeConfig();
                 RefreshTaskList();
                 uILogView.WriteLog($"[系统]修改任务「{s.Name}」");
             }
@@ -261,7 +262,7 @@ namespace YTS.TaskTimer.UIForms
                 return;
 
             _config.Schedules.Remove(s);
-            ConfigManageExtend.SaveConfigFileContent(_config, serializer);
+            ChangeConfig();
             RefreshTaskList();
             uILogView.WriteLog($"[系统]删除任务「{s.Name}」");
         }
@@ -358,7 +359,7 @@ namespace YTS.TaskTimer.UIForms
             });
             file.DropDownItems.Add(new ToolStripMenuItem("保存配置", null, (_, _) =>
             {
-                ConfigManageExtend.SaveConfigFileContent(_config, serializer);
+                ChangeConfig();
                 SetStatus("配置已保存");
             })
             {
@@ -409,12 +410,12 @@ namespace YTS.TaskTimer.UIForms
                 var closeToTray = new ToolStripMenuItem("关闭时最小化到托盘")
                 {
                     CheckOnClick = true,
-                    Checked = _config.CloseToTray
+                    Checked = _config.System.CloseToTray
                 };
                 closeToTray.Click += (_, _) =>
                 {
-                    _config.CloseToTray = closeToTray.Checked;
-                    ConfigManageExtend.SaveConfigFileContent(_config, serializer);
+                    _config.System.CloseToTray = closeToTray.Checked;
+                    ChangeConfig();
                 };
                 tools.DropDownItems.Add(closeToTray);
             }

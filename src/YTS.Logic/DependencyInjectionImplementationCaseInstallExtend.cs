@@ -25,6 +25,19 @@ namespace YTS.Logic
             // 注册: 序列化对象
             services.AddTransient<ISerializer, TextJSONSerializer>();
 
+            // 注册: 配置文件管理工具
+            services.AddSingleton(s =>
+            {
+                IAppConfigManage configManage;
+
+                ISerializer serializer = s.GetRequiredService<ISerializer>();
+                configManage = new AppConfigManage(serializer);
+
+                // 加入持久化缓存
+                configManage = new AppConfigManageCache(configManage);
+                return configManage;
+            });
+
             // 注册: 回调管理工具注册
             services.AddTransient(typeof(ICallbackLibraryManage<>), typeof(CallbackLibraryManage<>));
         }
