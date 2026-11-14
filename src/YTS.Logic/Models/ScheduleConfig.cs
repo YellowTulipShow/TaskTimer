@@ -16,9 +16,11 @@ namespace YTS.Logic.Models
         public bool Enabled { get; set; } = true;
 
         [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public DateTimeOffset? NextRunAt { get; set; }
 
         [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public int? RunningProcessId { get; set; }
 
         public DateTimeOffset? ComputeNext(DateTimeOffset fromUtc)

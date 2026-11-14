@@ -203,9 +203,13 @@ namespace YTS.TaskTimer.UITools
 
         private void OnRetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e)
         {
-            if (e.ItemIndex < 0 || e.ItemIndex >= _logs.Count) return;
+            if (e.ItemIndex < 0 || e.ItemIndex >= _logs.Count)
+            {
+                // 提供安全的占位项，防止控件内部因 e.Item 为 null 而出错
+                e.Item = new ListViewItem(new[] { "", "", "" });
+                return;
+            }
             var log = _logs[e.ItemIndex];
-
             e.Item = new ListViewItem(log.Time.ToString(time_format));
             e.Item.SubItems.Add(TypeToStr(log.Level));
             e.Item.SubItems.Add(log.Message);
@@ -311,27 +315,25 @@ namespace YTS.TaskTimer.UITools
         }
         private void ClearLogs()
         {
+            // 1. 清空底层数据源和待处理队列
             _logs.Clear();
             _pending.Clear();
 
+            // 2. 告诉 ListView 当前项数为 0
             _logList.BeginUpdate();
             try
             {
-                // ★ 核心修复：临时切换 VirtualMode 来彻底清空内部状态
-                // 直接 _logList.VirtualListSize = 0 只改"总数"，滚动位置残留在旧值
-                // 切换模式会重建 ListView 的虚拟列表内部结构，滚动位置真正归零
-                _logList.VirtualMode = false;
-                _logList.Items.Clear();      // 真正清空 Items
-                _logList.VirtualMode = true;
-                // 此时 ListView 内部 TopItem = null, ScrollPosition = 0
+                _logList.VirtualListSize = 0;
             }
             finally
             {
                 _logList.EndUpdate();
             }
 
-            // ★ 用 Refresh() 而不是 Invalidate()：同步强制重绘
+            // 3. 强制重绘。Refresh() 会同步触发重绘，确保界面立即变空
             _logList.Refresh();
+
+            // 4. 重新计算列宽（滚动条消失后可用宽度可能变化）
             ResizeLogColumns();
         }
     }

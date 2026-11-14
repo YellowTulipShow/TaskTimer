@@ -50,6 +50,7 @@ namespace YTS.Logic
                 LogConfig = new AppConfigLogControl()
                 {
                     LogMaxLineCount = 100,
+                    IsOuputDebugLog = false,
                 },
             };
         }
@@ -126,7 +127,7 @@ namespace YTS.Logic
             {
                 config = appConfig;
             }
-                configManage.Save(config);
+            configManage.Save(config);
         }
     }
 }
