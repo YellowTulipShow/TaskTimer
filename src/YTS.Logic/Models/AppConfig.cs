@@ -1,3 +1,5 @@
+using YTS.Logic.Editors;
+
 namespace YTS.Logic.Models
 {
     /// <summary>
@@ -36,6 +38,7 @@ namespace YTS.Logic.Models
         /// <summary>
         /// 是否关闭窗口变为最小化
         /// </summary>
+        [Display(Name = "最小化", Description = "是否关闭窗口变为最小化")]
         public bool CloseToTray { get; set; }
     }
 
@@ -47,11 +50,13 @@ namespace YTS.Logic.Models
         /// <summary>
         /// 日志展示最大行数
         /// </summary>
+        [Display(Name = "最大行数", Description = "日志展示控件可展示的最大行数")]
         public int LogMaxLineCount { get; set; }
 
         /// <summary>
         /// 是否输出调试日志内容
         /// </summary>
+        [Display(Name = "调试日志", Description = "是否输出调试日志内容")]
         public bool IsOuputDebugLog { get; set; }
     }
 }

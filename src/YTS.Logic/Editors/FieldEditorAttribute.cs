@@ -1,4 +1,5 @@
-namespace YTS.TaskTimer.UITools.Editors;
+
+namespace YTS.Logic.Editors;
 
 /// <summary>所有字段编辑器 Attribute 的基类，可继承扩展</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]

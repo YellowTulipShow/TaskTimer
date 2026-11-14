@@ -1,3 +1,5 @@
+using YTS.Logic.Editors;
+
 namespace YTS.TaskTimer.UITools.Editors;
 
 public sealed class GenericEditorForm<T> : Form where T : class, new()
@@ -52,7 +54,7 @@ public sealed class GenericEditorForm<T> : Form where T : class, new()
         int rowIndex = 0;
         foreach (var desc in descriptors)
         {
-            var editor = _registry.Create(desc);
+            IFieldEditor editor = _registry.Create(desc);
             editor.SetValue(desc.GetValue(_model));
 
             table.RowCount++;

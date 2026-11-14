@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace YTS.TaskTimer.UITools.Editors;
+namespace YTS.Logic.Editors;
 
 /// <summary>字段元数据：反射 + Attribute 解析后的统一描述</summary>
 public sealed class FieldDescriptor

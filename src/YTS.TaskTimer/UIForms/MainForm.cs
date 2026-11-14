@@ -2,6 +2,7 @@
 using YTS.Logic.Implement;
 using YTS.Logic.Models;
 using YTS.TaskTimer.UITools;
+using YTS.TaskTimer.UITools.Editors;
 
 namespace YTS.TaskTimer.UIForms
 {
@@ -364,6 +365,34 @@ namespace YTS.TaskTimer.UIForms
             })
             {
                 ShortcutKeys = Keys.Control | Keys.S
+            });
+            file.DropDownItems.Add(new ToolStripMenuItem("编辑系统配置", null, (_, _) =>
+            {
+                AppConfigSystem? result = GenericEditorForm<AppConfigSystem>.Edit(_config.System);
+                if (result != null)
+                {
+                    _config.System = result;
+                    configManage.Save(_config);
+                    ChangeConfig();
+                    SetStatus("系统配置已保存");
+                }
+            })
+            {
+                ShortcutKeys = Keys.Control | Keys.C
+            });
+            file.DropDownItems.Add(new ToolStripMenuItem("编辑日志配置", null, (_, _) =>
+            {
+                AppConfigLogControl? result = GenericEditorForm<AppConfigLogControl>.Edit(_config.LogConfig);
+                if (result != null)
+                {
+                    _config.LogConfig = result;
+                    configManage.Save(_config);
+                    ChangeConfig();
+                    SetStatus("日志配置已保存");
+                }
+            })
+            {
+                ShortcutKeys = Keys.Control | Keys.L
             });
             file.DropDownItems.Add(new ToolStripSeparator()); // 工具栏分隔符
             file.DropDownItems.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
