@@ -1,6 +1,8 @@
 namespace YTS.Logic.Editors;
 
-/// <summary>字段编辑器实例：负责创建(T类型)控件 + 读写值</summary>
+/// <summary>
+/// 接口: 字段编辑器实例：负责创建(T类型)控件 + 读写值
+/// </summary>
 public interface IFieldEditor<T>
 {
     /// <summary>
@@ -19,7 +21,9 @@ public interface IFieldEditor<T>
     object? GetValue();
 }
 
-/// <summary>字段编辑器工厂：判定能否处理 + 创建编辑器</summary>
+/// <summary>
+/// 接口: 字段编辑器工厂：判定能否处理 + 创建编辑器
+/// </summary>
 public interface IFieldEditorFactory<TEditor, TControl> where TEditor : IFieldEditor<TControl>
 {
     /// <summary>
@@ -28,6 +32,7 @@ public interface IFieldEditorFactory<TEditor, TControl> where TEditor : IFieldEd
     /// <param name="descriptor">字段描述内容</param>
     /// <returns>是否支持</returns>
     bool CanHandle(FieldDescriptor descriptor);
+
     /// <summary>
     /// 支持则创建指定的字段编辑器
     /// </summary>
@@ -48,6 +53,7 @@ public interface IEditorRegistry<TFactory, TEditor, TControl>
     /// </summary>
     /// <param name="factory">编辑器的创建工厂</param>
     void Register(TFactory factory);
+
     /// <summary>
     /// 依据字段描述结果获取字段编辑器实例
     /// </summary>

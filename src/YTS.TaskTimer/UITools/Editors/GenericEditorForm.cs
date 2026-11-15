@@ -30,7 +30,8 @@ public sealed class GenericEditorForm<T> : Form where T : class, new()
 
     private void BuildUi()
     {
-        var descriptors = FieldDescriptorBuilder.Build(typeof(T));
+        IReadOnlyList<FieldDescriptor> descriptors;
+        descriptors = FieldDescriptorBuilder.Build(typeof(T));
 
         var scrollPanel = new Panel
         {
