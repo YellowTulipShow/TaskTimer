@@ -36,6 +36,12 @@ namespace YTS.Logic.Models
     public sealed class AppConfigSystem
     {
         /// <summary>
+        /// 是否调试测试环境
+        /// </summary>
+        [Display(Name = "是否调试", Description = "是否调试测试环境")]
+        public bool IsDebugTest { get; set; }
+
+        /// <summary>
         /// 是否关闭窗口变为最小化
         /// </summary>
         [Display(Name = "最小化", Description = "是否关闭窗口变为最小化")]

@@ -45,6 +45,7 @@ namespace YTS.Logic
                 Schedules = [],
                 System = new AppConfigSystem()
                 {
+                    IsDebugTest = false,
                     CloseToTray = true,
                 },
                 LogConfig = new AppConfigLogControl()

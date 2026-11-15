@@ -396,26 +396,35 @@ namespace YTS.TaskTimer.UIForms
                     ShortcutKeys = Keys.Control | Keys.L
                 });
 
-                void _test_config<T>() where T : class, new()
+                if (_config.System.IsDebugTest)
                 {
-                    T m = new();
-                    var result = GenericEditorForm<T>.Edit(m);
-                    var logArgs = log.CreateArgDictionary();
-                    logArgs["m"] = m;
-                    log.Info("测试配置编辑", logArgs);
+                    void _test_config<T>() where T : class, new()
+                    {
+                        T m = new();
+                        Type type = typeof(T);
+                        var result = GenericEditorForm<T>.Edit(m);
+                        if (result != null)
+                        {
+                            var logArgs = log.CreateArgDictionary();
+                            logArgs["result"] = result;
+                            log.Info($"测试配置编辑({type.FullName})", logArgs);
+                        }
+                        else
+                            log.Info($"测试配置编辑({type.FullName})返回结果为空");
+                    }
+                    file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.SimpleTestModel", null, (_, _) =>
+                    {
+                        _test_config<UITools.Editors.TestModels.SimpleTestModel>();
+                    }));
+                    file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.FullTestModel", null, (_, _) =>
+                    {
+                        _test_config<UITools.Editors.TestModels.FullTestModel>();
+                    }));
+                    file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.LargeTestModel", null, (_, _) =>
+                    {
+                        _test_config<UITools.Editors.TestModels.LargeTestModel>();
+                    }));
                 }
-                file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.SimpleTestModel", null, (_, _) =>
-                {
-                    _test_config<UITools.Editors.TestModels.SimpleTestModel>();
-                }));
-                file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.FullTestModel", null, (_, _) =>
-                {
-                    _test_config<UITools.Editors.TestModels.FullTestModel>();
-                }));
-                file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.LargeTestModel", null, (_, _) =>
-                {
-                    _test_config<UITools.Editors.TestModels.LargeTestModel>();
-                }));
 
                 file.DropDownItems.Add(new ToolStripSeparator()); // 工具栏分隔符
                 file.DropDownItems.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
