@@ -354,49 +354,72 @@ namespace YTS.TaskTimer.UIForms
             var menu = new MenuStrip();
 
             var file = new ToolStripMenuItem("文件");
-            file.DropDownItems.Add(new ToolStripMenuItem("新建任务", null, (_, _) => OnNewTask())
             {
-                ShortcutKeys = Keys.Control | Keys.N
-            });
-            file.DropDownItems.Add(new ToolStripMenuItem("保存配置", null, (_, _) =>
-            {
-                ChangeConfig();
-                SetStatus("配置已保存");
-            })
-            {
-                ShortcutKeys = Keys.Control | Keys.S
-            });
-            file.DropDownItems.Add(new ToolStripMenuItem("编辑系统配置", null, (_, _) =>
-            {
-                AppConfigSystem? result = GenericEditorForm<AppConfigSystem>.Edit(_config.System);
-                if (result != null)
+                file.DropDownItems.Add(new ToolStripMenuItem("新建任务", null, (_, _) => OnNewTask())
                 {
-                    _config.System = result;
-                    configManage.Save(_config);
-                    ChangeConfig();
-                    SetStatus("系统配置已保存");
-                }
-            })
-            {
-                ShortcutKeys = Keys.Control | Keys.C
-            });
-            file.DropDownItems.Add(new ToolStripMenuItem("编辑日志配置", null, (_, _) =>
-            {
-                AppConfigLogControl? result = GenericEditorForm<AppConfigLogControl>.Edit(_config.LogConfig);
-                if (result != null)
+                    ShortcutKeys = Keys.Control | Keys.N
+                });
+                file.DropDownItems.Add(new ToolStripMenuItem("保存配置", null, (_, _) =>
                 {
-                    _config.LogConfig = result;
-                    configManage.Save(_config);
                     ChangeConfig();
-                    SetStatus("日志配置已保存");
-                }
-            })
-            {
-                ShortcutKeys = Keys.Control | Keys.L
-            });
-            file.DropDownItems.Add(new ToolStripSeparator()); // 工具栏分隔符
-            file.DropDownItems.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
+                    SetStatus("配置已保存");
+                })
+                {
+                    ShortcutKeys = Keys.Control | Keys.S
+                });
+                file.DropDownItems.Add(new ToolStripMenuItem("编辑系统配置", null, (_, _) =>
+                {
+                    AppConfigSystem? result = GenericEditorForm<AppConfigSystem>.Edit(_config.System);
+                    if (result != null)
+                    {
+                        _config.System = result;
+                        configManage.Save(_config);
+                        ChangeConfig();
+                        SetStatus("系统配置已保存");
+                    }
+                })
+                {
+                    ShortcutKeys = Keys.Control | Keys.C
+                });
+                file.DropDownItems.Add(new ToolStripMenuItem("编辑日志配置", null, (_, _) =>
+                {
+                    AppConfigLogControl? result = GenericEditorForm<AppConfigLogControl>.Edit(_config.LogConfig);
+                    if (result != null)
+                    {
+                        _config.LogConfig = result;
+                        configManage.Save(_config);
+                        ChangeConfig();
+                        SetStatus("日志配置已保存");
+                    }
+                })
+                {
+                    ShortcutKeys = Keys.Control | Keys.L
+                });
 
+                void _test_config<T>() where T : class, new()
+                {
+                    T m = new();
+                    var result = GenericEditorForm<T>.Edit(m);
+                    var logArgs = log.CreateArgDictionary();
+                    logArgs["m"] = m;
+                    log.Info("测试配置编辑", logArgs);
+                }
+                file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.SimpleTestModel", null, (_, _) =>
+                {
+                    _test_config<UITools.Editors.TestModels.SimpleTestModel>();
+                }));
+                file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.FullTestModel", null, (_, _) =>
+                {
+                    _test_config<UITools.Editors.TestModels.FullTestModel>();
+                }));
+                file.DropDownItems.Add(new ToolStripMenuItem("编辑测试配置.LargeTestModel", null, (_, _) =>
+                {
+                    _test_config<UITools.Editors.TestModels.LargeTestModel>();
+                }));
+
+                file.DropDownItems.Add(new ToolStripSeparator()); // 工具栏分隔符
+                file.DropDownItems.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
+            }
             var tools = new ToolStripMenuItem("工具");
             // 开机自启动
             {
