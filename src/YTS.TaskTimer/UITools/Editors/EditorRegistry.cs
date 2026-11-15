@@ -2,23 +2,8 @@ using YTS.Logic.Editors;
 
 namespace YTS.TaskTimer.UITools.Editors;
 
-/// <summary>字段编辑器实例：负责创建控件 + 读写值</summary>
-public interface IFieldEditor
-{
-    Control Control { get; }
-    void SetValue(object? value);
-    object? GetValue();
-}
-
-/// <summary>字段编辑器工厂：判定能否处理 + 创建编辑器</summary>
-public interface IFieldEditorFactory
-{
-    bool CanHandle(FieldDescriptor descriptor);
-    IFieldEditor Create(FieldDescriptor descriptor);
-}
-
 /// <summary>编辑器注册表：按优先级匹配工厂</summary>
-public sealed class EditorRegistry
+public sealed class EditorRegistry : IEditorRegistry
 {
     private readonly List<IFieldEditorFactory> _factories = [];
 

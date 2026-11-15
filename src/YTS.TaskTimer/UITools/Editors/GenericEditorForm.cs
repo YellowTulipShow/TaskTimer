@@ -7,11 +7,11 @@ public sealed class GenericEditorForm<T> : Form where T : class, new()
     public T? Result { get; private set; }
 
     private readonly T _model;
-    private readonly EditorRegistry _registry;
+    private readonly IEditorRegistry _registry;
     private readonly List<(FieldDescriptor Descriptor, IFieldEditor Editor)> _bindings = new();
     private readonly ToolTip _toolTip = new();
 
-    public GenericEditorForm(T? initialValue = null, EditorRegistry? registry = null)
+    public GenericEditorForm(T? initialValue = null, IEditorRegistry? registry = null)
     {
         _model = initialValue == null ? new T() : Clone(initialValue);
         _registry = registry ?? EditorRegistry.Default;
