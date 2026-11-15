@@ -11,7 +11,11 @@
 	2. 默认开启关闭前台界面
 	3. 如QQ那样进入后天运行时关闭前台界面再任务栏右下角右键图标有退出/管理单一程序的监控终止/打开前台页面
 
-## 发布脚本
+# 更新日志
+
+[](CHANGLOG.md)
+
+# 发布脚本
 
 ```powershell
 dotnet publish .\src\YTS.TaskTimer\YTS.TaskTimer.csproj -o ./_release/TaskTimer/ -c Release --runtime win-x64 --self-contained true
